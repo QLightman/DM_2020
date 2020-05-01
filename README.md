@@ -23,7 +23,7 @@ In our experiment, face data is from [CelebA dataset](http://mmlab.ie.cuhk.edu.h
 To train the model, run the following command line in the source code directory. You may set other parameters based on your experiment setting.
 
 ```bash
-python train.py --dataroot ../datasets/DatasetName/ --name job_name --batch_size 2 --lambdaB 0.1 --lr 0.0002
+python train.py --dataroot ../datasets/ --name job_name --batch_size 2 --lambdaB 0.1 --lr 0.0002
 ```
 
 ### Test
