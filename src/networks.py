@@ -99,12 +99,12 @@ class E_content(nn.Module):
     super(E_content, self).__init__()
     encA_c = []
     tch = 64
-    encA_c =encA_c [LeakyReLUConv2d(input_dim_a, tch, kernel_size=7, stride=1, padding=3)]
+    encA_c =encA_c+ [LeakyReLUConv2d(input_dim_a, tch, kernel_size=7, stride=1, padding=3)]
     for i in range(1, 3):
-      encA_c =encA_c [ReLUINSConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)]
+      encA_c =encA_c +[ReLUINSConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)]
       tch *= 2
     for i in range(0, 3):
-      encA_c =encA_c [INSResBlock(tch, tch)]
+      encA_c =encA_c +[INSResBlock(tch, tch)]
 
     encB_c = []
     tch = 64
