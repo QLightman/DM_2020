@@ -25,7 +25,7 @@ def main():
   else:
     ep0, total_it = model.resume(opts.resume)
   model.set_scheduler(opts, last_ep=ep0)
-  ep0 += 1
+  ep0 =ep0+ 1
   print('start the training at epoch %d'%(ep0))
 
   # saver for display and output
@@ -55,7 +55,7 @@ def main():
       if (it+1) % 200 == 0:
         saver.write_img(ep*len(train_loader) + (it+1), model)
         
-      total_it += 1
+      total_it =total_it+ 1
       if total_it >= max_it:
         saver.write_img(-1, model)
         saver.write_model(-1, model)

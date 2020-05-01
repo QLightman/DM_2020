@@ -205,7 +205,7 @@ class UID(nn.Module):
       all1 = torch.ones_like(out_real).cuda(self.gpu)
       ad_fake_loss = nn.functional.binary_cross_entropy(out_fake, all0)
       ad_true_loss = nn.functional.binary_cross_entropy(out_real, all1)
-      loss_D += ad_true_loss + ad_fake_loss
+      loss_D =loss_D+ ad_true_loss + ad_fake_loss
     loss_D.backward()
     return loss_D
 
@@ -276,7 +276,7 @@ class UID(nn.Module):
     for out_a in outs_fake:
       outputs_fake = nn.functional.sigmoid(out_a)
       all_ones = torch.ones_like(outputs_fake).cuda(self.gpu)
-      loss_G += nn.functional.binary_cross_entropy(outputs_fake, all_ones)
+      loss_G =loss_G+ nn.functional.binary_cross_entropy(outputs_fake, all_ones)
     return loss_G
 
   def backward_G_alone(self):
