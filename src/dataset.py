@@ -51,7 +51,8 @@ class dataset_unpair(data.Dataset):
     self.resize_y = opts.resize_size_y
 
     if opts.phase == 'train':
-      transforms = [RandomCrop(opts.crop_size)]
+      transforms = [CenterCrop(512)]
+      transforms.append(RandomCrop(opts.crop_size))
     else:
       transforms = [CenterCrop(opts.crop_size)]
     if not opts.no_flip:
