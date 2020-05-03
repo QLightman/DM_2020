@@ -7,6 +7,8 @@ import math
 
 folder = "./data"
 blur_folder = "./blur_downsample"
+if not os.path.exists(blur_folder):
+    os.makedirs(blur_folder)
 all_blur = os.path.join(folder, "*_blur.png")
 print("downsample single file")
 for single_file in tqdm.tqdm(glob.glob(all_blur)):
