@@ -2,3 +2,6 @@
 *Store/
 *Store
 *.DS_Store
+*.png
+*.ipynb
+*points/
