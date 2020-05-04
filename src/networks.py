@@ -55,7 +55,9 @@ class MultiScaleDis(nn.Module):
   def forward(self, x):
     outs = []
     for Dis in self.Diss:
+      #print("x shape is ", x.size())
       outs.append(Dis(x))
+      #print("output x after this Dis is ", Dis(x).size())
       x = self.downsample(x)
     return outs
 
@@ -96,9 +98,11 @@ class Dis(nn.Module):
 ####################################################################
 class E_content(nn.Module):
   def __init__(self, input_dim_a, input_dim_b):
+    #a: HR; b: LR
     super(E_content, self).__init__()
     encA_c = []
     tch = 64
+
     encA_c += [LeakyReLUConv2d(input_dim_a, tch, kernel_size=7, stride=1, padding=3)]
     for i in range(1, 3):
       encA_c += [ReLUINSConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)]
@@ -108,7 +112,11 @@ class E_content(nn.Module):
 
     encB_c = []
     tch = 64
-    encB_c += [LeakyReLUConv2d(input_dim_b, tch, kernel_size=7, stride=1, padding=3)]
+    self.special_test = [LeakyReLUConvTranspose2d(input_dim_b, tch, kernel_size=4, stride=2, padding=1, output_padding=0)]
+    #encB_c += [LeakyReLUConvTranspose2d(input_dim_b, tch, kernel_size=4, stride=2, padding=1, output_padding=0)]
+    self.special_test += [ReLUINSConvTranspose2d(tch, tch, kernel_size=3, stride=2, padding=1, output_padding=1)]
+    
+    encB_c += [ReLUINSConv2d(tch, tch, kernel_size=7, stride=1, padding=3)]
     for i in range(1, 3):
       encB_c += [ReLUINSConv2d(tch, tch * 2, kernel_size=3, stride=2, padding=1)]
       tch *= 2
@@ -123,10 +131,16 @@ class E_content(nn.Module):
 
     self.convA = nn.Sequential(*encA_c)
     self.convB = nn.Sequential(*encB_c)
+    self.special_test = nn.Sequential(*self.special_test)
 
   def forward(self, xa, xb):
     outputA = self.convA(xa)
-    outputB = self.convB(xb)
+    outputB = self.special_test(xb)
+
+    #print("output B after special test shape in encoder", outputB.size())
+    #raise NotImplementedError
+
+    outputB = self.convB(outputB)
     outputA = self.conv_share(outputA)
     outputB = self.conv_share(outputB)
     return outputA, outputB
@@ -210,10 +224,10 @@ class G_concat(nn.Module):
     for i in range(0, 3):
       decB1 += [INSResBlock(tch, tch)]
     tch = tch + self.nz
-    decB2 = ReLUINSConvTranspose2d(tch, tch//2, kernel_size=3, stride=2, padding=1, output_padding=1)
+    decB2 = ReLUINSConvTranspose2d(tch, tch//2, kernel_size=1, stride=1, padding=0, output_padding=0)
     tch = tch//2
     tch = tch + self.nz
-    decB3 = ReLUINSConvTranspose2d(tch, tch//2, kernel_size=3, stride=2, padding=1, output_padding=1)
+    decB3 = ReLUINSConvTranspose2d(tch, tch//2, kernel_size=1, stride=1, padding=0, output_padding=0)
     tch = tch//2
     tch = tch + self.nz
     decB4 = [nn.ConvTranspose2d(tch, output_dim_b, kernel_size=1, stride=1, padding=0)]+[nn.Tanh()]
@@ -236,22 +250,30 @@ class G_concat(nn.Module):
     z_img4 = z.view(z.size(0), z.size(1), 1, 1).expand(z.size(0), z.size(1), out3.size(2), out3.size(3))
     x_and_z4 = torch.cat([out3, z_img4], 1)
     out4 = self.decA4(x_and_z4)
+    #print("out from D generatoe shape is", out4.size())
     return out4
 
   def forward_B(self, x, z):
     out0 = self.dec_share(x)
     z_img = z.view(z.size(0), z.size(1), 1, 1).expand(z.size(0), z.size(1), x.size(2), x.size(3))
     x_and_z = torch.cat([out0,  z_img], 1)
-    out1 = self.decB1(x_and_z)
+    out1 = self.decB1(x_and_z) #64 * 64
+    #print("out1 size is", out1.size())
+
     z_img2 = z.view(z.size(0), z.size(1), 1, 1).expand(z.size(0), z.size(1), out1.size(2), out1.size(3))
     x_and_z2 = torch.cat([out1, z_img2], 1)
     out2 = self.decB2(x_and_z2)
+    #print("out2 size is ", out2.size())
+    
     z_img3 = z.view(z.size(0), z.size(1), 1, 1).expand(z.size(0), z.size(1), out2.size(2), out2.size(3))
     x_and_z3 = torch.cat([out2, z_img3], 1)
     out3 = self.decB3(x_and_z3)
+    #print("out3 size is ", out3.size())
+    
     z_img4 = z.view(z.size(0), z.size(1), 1, 1).expand(z.size(0), z.size(1), out3.size(2), out3.size(3))
     x_and_z4 = torch.cat([out3, z_img4], 1)
     out4 = self.decB4(x_and_z4)
+    #print("out from B generator shape is ", out4.size())
     return out4
 
 ####################################################################
@@ -270,15 +292,23 @@ class PerceptualLoss():
             model.add_module(str(i),layer)
             if i == p_layer:
                 break
-        self.contentFunc = model     
+        self.contentFunc = model
+        self.downsample = lambda x: F.avg_pool2d(x, 3, stride=2, padding=1, count_include_pad=False)     
 
-    def getloss(self, fakeIm, realIm):
+    def getloss(self, fakeIm, realIm, downsample="A"):
         if isinstance(fakeIm, numpy.ndarray):
             fakeIm = torch.from_numpy(fakeIm).permute(2, 0, 1).unsqueeze(0).float().cuda()
             realIm = torch.from_numpy(realIm).permute(2, 0, 1).unsqueeze(0).float().cuda()
         f_fake = self.contentFunc.forward(fakeIm)
         f_real = self.contentFunc.forward(realIm)
         f_real_no_grad = f_real.detach()
+        if downsample == "A":
+          f_fake = self.downsample(self.downsample(f_fake))
+        else:
+          f_real_no_grad = self.downsample(self.downsample(f_real_no_grad))
+        #print("f_fake shape is ", f_fake.size())
+        #print("f_real_no_grad shape is ", f_real_no_grad.size())
+        #raise NotImplementedError
         loss = self.criterion(f_fake, f_real_no_grad)
         return loss
 class PerceptualLoss16():
@@ -559,13 +589,46 @@ class ReLUINSConvTranspose2d(nn.Module):
     super(ReLUINSConvTranspose2d, self).__init__()
     model = []
     model += [nn.ConvTranspose2d(n_in, n_out, kernel_size=kernel_size, stride=stride, padding=padding, output_padding=output_padding, bias=True)]
-    model += [LayerNorm(n_out)]
+    model += [nn.InstanceNorm2d(n_out, affine=False)]
     model += [nn.ReLU(inplace=True)]
     self.model = nn.Sequential(*model)
     self.model.apply(gaussian_weights_init)
   def forward(self, x):
     return self.model(x)
 
+class ReLUConvTranspose2d(nn.Module):
+  def __init__(self, n_in, n_out, kernel_size, stride, padding, output_padding):
+    super(ReLUConvTranspose2d, self).__init__()
+    model = []
+    model += [nn.ConvTranspose2d(n_in, n_out, kernel_size=kernel_size, stride=stride, padding=padding, output_padding=output_padding, bias=True)]
+    model += [nn.ReLU(inplace=True)]
+    self.model = nn.Sequential(*model)
+    self.model.apply(gaussian_weights_init)
+  def forward(self, x):
+    return self.model(x)
+
+class LeakyReLUConvTranspose2d(nn.Module):
+  def __init__(self, n_in, n_out, kernel_size, stride, padding, output_padding):
+    super(LeakyReLUConvTranspose2d, self).__init__()
+    model = []
+    model += [nn.ConvTranspose2d(n_in, n_out, kernel_size=kernel_size, stride=stride, padding=padding, output_padding=output_padding, bias=True)]
+    model += [nn.LeakyReLU(inplace=True)]
+    self.model = nn.Sequential(*model)
+    self.model.apply(gaussian_weights_init)
+  def forward(self, x):
+    return self.model(x)
+
+class LeakyReLUINSConvTranspose2d(nn.Module):
+  def __init__(self, n_in, n_out, kernel_size, stride, padding, output_padding):
+    super(LeakyReLUINSConvTranspose2d, self).__init__()
+    model = []
+    model += [nn.ConvTranspose2d(n_in, n_out, kernel_size=kernel_size, stride=stride, padding=padding, output_padding=output_padding, bias=True)]
+    model += [nn.InstanceNorm2d(n_out, affine=False)]
+    model += [nn.LeakyReLU(inplace=True)]
+    self.model = nn.Sequential(*model)
+    self.model.apply(gaussian_weights_init)
+  def forward(self, x):
+    return self.model(x)
 
 ####################################################################
 #--------------------- Spectral Normalization ---------------------

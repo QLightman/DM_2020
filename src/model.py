@@ -8,6 +8,9 @@ class UID(nn.Module):
   def __init__(self, opts):
     super(UID, self).__init__()
 
+    #a/I/D: high resolution, clear
+    #b/B: low resolution, blur
+
     # parameters
     lr = opts.lr
     self.nz = 8
@@ -33,12 +36,14 @@ class UID(nn.Module):
       self.enc_a = networks.E_attr_concat(opts.input_dim_b, self.nz, \
           norm_layer=None, nl_layer=networks.get_non_linearity(layer_type='lrelu'))
     else:
+      #warning: not implemented for SR
       self.enc_a = networks.E_attr(opts.input_dim_a, opts.input_dim_b, self.nz)
 
     # generator
     if self.concat:
       self.gen = networks.G_concat(opts.input_dim_a, opts.input_dim_b, nz=self.nz)
     else:
+      #warning: not implemented for SR
       self.gen = networks.G(opts.input_dim_a, opts.input_dim_b, nz=self.nz)
 
     # optimizers
@@ -108,11 +113,13 @@ class UID(nn.Module):
     # input images
     real_I = self.input_I
     real_B = self.input_B
-    half_size = real_I.size(0) // 2
+    half_size = real_I.size(0) // 2 #basically use one half of a batch as encoded data, and another half as random data
     self.real_I_encoded = real_I[0:half_size]
     self.real_I_random = real_I[half_size:]
     self.real_B_encoded = real_B[0:half_size]
     self.real_B_random = real_B[half_size:]
+    #print("real_I shape ", real_I.size())
+    #print("real_B shape", real_B.size())
 
     # get encoded z_c
     self.z_content_i, self.z_content_b = self.enc_c.forward(self.real_I_encoded, self.real_B_encoded)
@@ -130,6 +137,8 @@ class UID(nn.Module):
     self.z_random = self.get_z_random(self.real_I_encoded.size(0), self.nz, 'gauss')
 
     # first cross translation
+    #print("z_content_i shape is ", self.z_content_i.size())
+    #print("z_content_b shape is ", self.z_content_b.size())
     input_content_forI = torch.cat((self.z_content_b, self.z_content_i, self.z_content_b),0)
     input_content_forB = torch.cat((self.z_content_i, self.z_content_b, self.z_content_i),0)
     input_attr_forI = torch.cat((self.z_attr_b, self.z_attr_b, self.z_random),0)
@@ -138,8 +147,13 @@ class UID(nn.Module):
 
     output_fakeI = self.gen.forward_D(input_content_forI, input_attr_forI)
     output_fakeB = self.gen.forward_B(input_content_forB, input_attr_forB)
+    #print("output_fakeI", output_fakeI.size())
+    #print("output_fakeB", output_fakeB.size())
+    #raise NotImplementedError
     self.fake_I_encoded, self.fake_II_encoded, self.fake_I_random = torch.split(output_fakeI, self.z_content_i.size(0), dim=0)
     self.fake_B_encoded, self.fake_BB_encoded, self.fake_B_random = torch.split(output_fakeB, self.z_content_i.size(0), dim=0)
+    #print("fake_B_encoded", self.fake_B_encoded.size())
+    #print("fake_BB_encoded", self.fake_BB_encoded.size())
 
     # get reconstructed encoded z_c
     self.z_content_recon_b, self.z_content_recon_i = self.enc_c.forward(self.fake_I_encoded, self.fake_B_encoded)
@@ -156,6 +170,8 @@ class UID(nn.Module):
     # second cross translation
     self.fake_I_recon = self.gen.forward_D(self.z_content_recon_i, self.z_attr_recon_b)
     self.fake_B_recon = self.gen.forward_B(self.z_content_recon_b, self.z_attr_recon_b)
+    #print("fake_I_recon ", self.fake_I_recon.size())
+    #print("fake_B_recon ", self.fake_B_recon.size())
 
 
     # for latent regression
@@ -195,10 +211,14 @@ class UID(nn.Module):
     self.disB2_opt.step()
 
   def backward_D(self, netD, real, fake):
+    #print("real shape is ", real.size())
+    #print("fake shape is ", fake.size())
     pred_fake = netD.forward(fake.detach())
     pred_real = netD.forward(real)
     loss_D = 0
     for it, (out_a, out_b) in enumerate(zip(pred_fake, pred_real)):
+      #print("out_a size is ", out_a.size())
+      #print("out_b size is ", out_b.size())
       out_fake = nn.functional.sigmoid(out_a)
       out_real = nn.functional.sigmoid(out_b)
       all0 = torch.zeros_like(out_fake).cuda(self.gpu)
@@ -247,8 +267,8 @@ class UID(nn.Module):
     loss_G_L1_BB = self.criterionL1(self.fake_BB_encoded, self.real_B_encoded) * 10
     
     # perceptual losses
-    percp_loss_B = self.perceptualLoss.getloss(self.fake_I_encoded, self.real_B_encoded) * self.lambdaB
-    percp_loss_I = self.perceptualLoss.getloss(self.fake_B_encoded, self.real_I_encoded) * self.lambdaI
+    percp_loss_B = self.perceptualLoss.getloss(self.fake_I_encoded, self.real_B_encoded, downsample="A") * self.lambdaB
+    percp_loss_I = self.perceptualLoss.getloss(self.fake_B_encoded, self.real_I_encoded, downsample="B") * self.lambdaI
 
     loss_G = loss_G_GAN_I + loss_G_GAN_B + \
              loss_G_L1_II + loss_G_L1_BB + \
@@ -291,8 +311,8 @@ class UID(nn.Module):
       loss_z_L1_b = torch.mean(torch.abs(self.z_attr_random_b - self.z_random)) * 10
     
     # perceptual losses
-    percp_loss_B2 = self.perceptualLoss.getloss(self.fake_I_random, self.real_B_encoded) * self.lambdaB
-    percp_loss_I2 = self.perceptualLoss.getloss(self.fake_B_random, self.real_I_encoded) * self.lambdaI
+    percp_loss_B2 = self.perceptualLoss.getloss(self.fake_I_random, self.real_B_encoded, downsample="A") * self.lambdaB
+    percp_loss_I2 = self.perceptualLoss.getloss(self.fake_B_random, self.real_I_encoded, downsample="B") * self.lambdaI
 
 
     loss_G2 = loss_z_L1_b + loss_G_GAN2_I + loss_G_GAN2_B + percp_loss_B2 + percp_loss_I2

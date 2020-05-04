@@ -14,6 +14,7 @@ class dataset_single(data.Dataset):
     transforms = [ToTensor()]
     transforms.append(Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]))
     self.transforms = Compose(transforms)
+    self.transforms_B = Compose(transforms)
     print('%s: %d images'%(setname, self.size))
     return
 
@@ -51,15 +52,21 @@ class dataset_unpair(data.Dataset):
     self.resize_y = opts.resize_size_y
 
     if opts.phase == 'train':
-      transforms = [CenterCrop(512)] # low resolution for gopro: 128
-      transforms.append(RandomCrop(opts.crop_size))
+      transforms = [CenterCrop(256)] # low resolution for gopro: 128
+      transforms_B = [CenterCrop(64)]
+      #transforms.append(RandomCrop(opts.crop_size))
+      #Random crop for B?
     else:
       transforms = [CenterCrop(opts.crop_size)]
     if not opts.no_flip:
       transforms.append(RandomHorizontalFlip())
+      transforms_B.append(RandomHorizontalFlip())
     transforms.append(ToTensor())
     transforms.append(Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]))
+    transforms_B.append(ToTensor())
+    transforms_B.append(Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]))
     self.transforms = Compose(transforms)
+    self.transforms_B = Compose(transforms_B)
     print('A: %d, B: %d images'%(self.A_size, self.B_size))
     return
 
@@ -67,13 +74,13 @@ class dataset_unpair(data.Dataset):
     if self.dataset_size == self.A_size:
       data_A = self.load_img(self.A[index], self.input_dim_A)
       temp_b_index = random.randint(0, self.B_size - 1)
-      data_B = self.load_img(self.B[temp_b_index], self.input_dim_B)
+      data_B = self.load_img(self.B[temp_b_index], self.input_dim_B, "B")
     else:
       data_A = self.load_img(self.A[random.randint(0, self.A_size - 1)], self.input_dim_A)
-      data_B = self.load_img(self.B[index], self.input_dim_B)
+      data_B = self.load_img(self.B[index], self.input_dim_B, "B")
     return data_A, data_B
 
-  def load_img(self, img_name, input_dim):
+  def load_img(self, img_name, input_dim, type="A"):
         
     img = Image.open(img_name).convert('RGB')
     (w,h) = img.size
@@ -83,9 +90,10 @@ class dataset_unpair(data.Dataset):
     else:
         resize_y = self.resize_y
         resize_x = round(self.resize_y * w / h)
-    resize_img = Compose([Resize((resize_y, resize_x), Image.BICUBIC)])
-    img = resize_img(img)
-    img = self.transforms(img)
+    #resize_img = Compose([Resize((resize_y, resize_x), Image.BICUBIC)])
+    #img = resize_img(img)
+
+    img = self.transforms(img) if type == "A" else self.transforms_B(img)
     if input_dim == 1:
       img = img[0, ...] * 0.299 + img[1, ...] * 0.587 + img[2, ...] * 0.114
       img = img.unsqueeze(0)
