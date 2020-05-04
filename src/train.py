@@ -53,12 +53,12 @@ def main():
         print('total_loss is ', model.disA_loss + model.disB_loss + model.gan_loss_i + model.gan_loss_b + model.B_percp_loss * 0.1 + model.l1_recon_II_loss)
         print('Dis_I_loss: %04f, Dis_B_loss %04f, GAN_loss_I %04f, GAN_loss_B %04f' % (model.disA_loss, model.disB_loss, model.gan_loss_i,model.gan_loss_b))
         print('B_percp_loss %04f, Recon_II_loss %04f' % (model.B_percp_loss, model.l1_recon_II_loss))
-      if (it+1) % 200 == 0:
-        saver.write_img(ep*len(train_loader) + (it+1), model)
+      #if (it+1) % 200 == 0:
+        #saver.write_img(ep*len(train_loader) + (it+1), model)
         
       total_it += 1
       if total_it >= max_it:
-        saver.write_img(-1, model)
+        #saver.write_img(-1, model)
         saver.write_model(-1, model)
         break
 
