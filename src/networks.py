@@ -151,7 +151,9 @@ class E_content(nn.Module):
     return outputA
 
   def forward_b(self, xb):
-    outputB = self.convB(xb)
+    #print("DEBUG")
+    outputB = self.special_test(xb)
+    outputB = self.convB(outputB)
     outputB = self.conv_share(outputB)
     return outputB
 
@@ -302,10 +304,15 @@ class PerceptualLoss():
         f_fake = self.contentFunc.forward(fakeIm)
         f_real = self.contentFunc.forward(realIm)
         f_real_no_grad = f_real.detach()
+        #print("before downsampling...")
+        #print("f_fake shape is ", f_fake.size())
+        #print("f_real_no_grad shape is ", f_real_no_grad.size())
         if downsample == "A":
           f_fake = self.downsample(self.downsample(f_fake))
-        else:
+        elif downsample == "B":
           f_real_no_grad = self.downsample(self.downsample(f_real_no_grad))
+        else:
+          pass
         #print("f_fake shape is ", f_fake.size())
         #print("f_real_no_grad shape is ", f_real_no_grad.size())
         #raise NotImplementedError

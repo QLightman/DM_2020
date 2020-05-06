@@ -52,8 +52,8 @@ class dataset_unpair(data.Dataset):
     self.resize_y = opts.resize_size_y
 
     if opts.phase == 'train':
-      transforms = [CenterCrop(256)] # low resolution for gopro: 128
-      transforms_B = [CenterCrop(64)]
+      transforms = [CenterCrop(256)] # low resolution for gopro: 128 #256
+      transforms_B = [CenterCrop(64)] #64
       #transforms.append(RandomCrop(opts.crop_size))
       #Random crop for B?
     else:

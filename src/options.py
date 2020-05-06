@@ -25,7 +25,7 @@ class TrainOptions():
 
     # training related
     self.parser.add_argument('--concat', type=int, default=1, help='concatenate attribute features for translation, set 0 for using feature-wise transform')
-    self.parser.add_argument('--dis_scale', type=int, default=3, help='scale of discriminator')
+    self.parser.add_argument('--dis_scale', type=int, default=3, help='scale of discriminator') #3
     self.parser.add_argument('--dis_norm', type=str, default='None', help='normalization layer in discriminator [None, Instance]')
     self.parser.add_argument('--dis_spectral_norm', action='store_true', help='use spectral normalization in discriminator')
     self.parser.add_argument('--lr_policy', type=str, default='lambda', help='type of learn rate decay')

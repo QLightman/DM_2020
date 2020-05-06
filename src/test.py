@@ -87,10 +87,10 @@ def main():
             print(orig_img_name)
         
         with torch.no_grad():
-            temp = pLoss.getloss(deblur_img,orig_img)
-            temp2 = pLoss.getloss(blur_img,orig_img)
+            temp = pLoss.getloss(deblur_img,orig_img, downsample=None)
+            #temp2 = pLoss.getloss(blur_img,orig_img, downsample="B")
         percp.append(temp)
-        blur_percp.append(temp2)
+        #blur_percp.append(temp2)
         
     print(sum(psnr)/len(psnr))
     print(sum(ssim)/len(ssim))
@@ -98,7 +98,7 @@ def main():
     
     print(sum(blur_psnr)/len(psnr))
     print(sum(blur_ssim)/len(ssim))
-    print(sum(blur_percp)/len(percp))
+    #print(sum(blur_percp)/len(percp))
     return
 
 if __name__ == '__main__':

@@ -48,7 +48,7 @@ def main():
       model.update_EG()
 
       # save to display file
-      if (it+1) % 48 == 0:
+      if (it+1) % 1 == 0:
         print('total_it: %d (ep %d, it %d), lr %08f' % (total_it+1, ep, it+1, model.gen_opt.param_groups[0]['lr']))
         print('total_loss is ', model.disA_loss + model.disB_loss + model.gan_loss_i + model.gan_loss_b + model.B_percp_loss * 0.1 + model.l1_recon_II_loss)
         print('Dis_I_loss: %04f, Dis_B_loss %04f, GAN_loss_I %04f, GAN_loss_B %04f' % (model.disA_loss, model.disB_loss, model.gan_loss_i,model.gan_loss_b))
@@ -67,6 +67,7 @@ def main():
       model.update_lr()
 
     # Save network weights
+    print("saving model")
     saver.write_model(ep, total_it+1, model)
 
   return
