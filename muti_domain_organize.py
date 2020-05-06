@@ -29,10 +29,11 @@ blur_img = os.path.join(blur_folder, "*.png")
 clear_filelist = sorted(glob.glob(clear_img))
 blur_filelist = sorted(glob.glob(blur_img))
 
-num_train_clear=90
+begin=210
+end=290
 
 for i, single_file in enumerate(tqdm.tqdm(clear_filelist)):
-    if i < num_train_clear:
+    if i <= end and i>begin:
      # move file with full paths as shutil.move() parameters
         #dst_path = os.path.join(clear_folder, "")
         shutil.move(single_file, group_truth_folder)
@@ -41,7 +42,7 @@ for i, single_file in enumerate(tqdm.tqdm(clear_filelist)):
 
 
 for i, single_file in enumerate(tqdm.tqdm(blur_filelist)):
-    if i < num_train_clear:
+    if i <= end and i>begin:
      # move file with full paths as shutil.move() parameters
         #dst_path = os.path.join(clear_folder, "")
         shutil.move(single_file, test_folder)
