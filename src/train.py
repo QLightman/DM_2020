@@ -66,7 +66,8 @@ def main():
       model.update_lr()
 
     # Save network weights
-    saver.write_model(ep, total_it+1, model)
+    if(ep<=10 or ep>=90):
+      saver.write_model(ep, total_it+1, model)
 
   return
 
